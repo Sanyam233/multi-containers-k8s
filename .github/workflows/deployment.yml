@@ -1,0 +1,19 @@
+name: Multi Container CI/CD
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build a test client image
+        run: docker build -t sanyamgupta23/multi-client-test -f ./client/dockerfile.dev ./client
+
+      - name: Run tests on docker
+        run: docker run -e CI=true sanyamgupta23/multi-client-test npm test

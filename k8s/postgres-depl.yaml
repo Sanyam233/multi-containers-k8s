@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-depl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: postgres
+  template:
+    metadata:
+      labels:
+        component: postgres
+    spec:
+      #Tells k8s that we need a storage based on the criteria listed in PVC
+      volumes:
+        - name: postgres-volume
+          persistentVolumeClaim:
+            claimName: db-pvc #Same as the name listed under PVC
+      containers:
+        - name: postgres
+          image: postgres
+          ports:
+            - containerPort: 5432
+          volumeMounts: #connects the asked PV to the container
+            - name: postgres-volume
+              #Path of the container folder that needs to be stored in PV
+              mountPath: /var/lib/postgressql/data #Default path used by postgres to save data
+              subPath: postgres #ony specific to postgres. In PV data will be saved as postgres/[mountPath]
+          envFrom:
+            - secretRef:
+                name: pgpassword
