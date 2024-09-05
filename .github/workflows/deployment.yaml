@@ -1,0 +1,66 @@
+name: Multi Container CI/CD
+
+on:
+  push:
+    branches:
+      - "**"
+
+env:
+  SHA: $(git rev-parse HEAD)
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build a test client image
+        run: docker build -t sanyamgupta23/multi-client-test -f ./client/Dockerfile.dev ./client
+
+      - name: Run tests on docker
+        run: docker run -e CI=true sanyamgupta23/multi-client-test npm test
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Login to Docker
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build production images
+        run: |
+          docker build --no-cache -t sanyamgupta23/multi-client:latest sanyamgupta23/multi-client:${{ env.SHA }} ./client
+          docker build --no-cache -t sanyamgupta23/multi-server:latest sanyamgupta23/multi-server:${{ env.SHA }} ./server
+          docker build --no-cache -t sanyamgupta23/multi-worker:latest sanyamgupta23/multi-worker:${{ env.SHA }} ./worker
+
+      - name: Push images to Dockerhub
+        run: |
+          docker push sanyamgupta23/multi-client:latest 
+          docker push sanyamgupta23/multi-server:latest
+          docker push sanyamgupta23/multi-worker:latest
+
+          docker push sanyamgupta23/multi-client:${{ env.SHA }} 
+          docker push sanyamgupta23/multi-server:${{ env.SHA }}
+          docker push sanyamgupta23/multi-worker:${{ env.SHA }}
+
+      - name: Authenticate with GKE
+        run: |
+          gcloud container clusters get-credentials multi-containers-k8s --zone us-central1-c --project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Deploy to GKE
+        run: |
+          kubectl apply -f k8s/
+
+          kubectl set image deployments/server-depl server=sanyamgupta23/multi-server:${{ env.SHA }}
+          kubectl set image deployments/client-depl client=sanyamgupta23/multi-client:${{ env.SHA }}
+          kubectl set image deployments/worker-depl worker=sanyamgupta23/multi-worker:${{ env.SHA }}
