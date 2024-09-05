@@ -39,9 +39,9 @@ jobs:
 
       - name: Build production images
         run: |
-          docker build --no-cache -t sanyamgupta23/multi-client:latest sanyamgupta23/multi-client:${{ env.SHA }} ./client
-          docker build --no-cache -t sanyamgupta23/multi-server:latest sanyamgupta23/multi-server:${{ env.SHA }} ./server
-          docker build --no-cache -t sanyamgupta23/multi-worker:latest sanyamgupta23/multi-worker:${{ env.SHA }} ./worker
+          docker build --no-cache -t sanyamgupta23/multi-client:latest -t sanyamgupta23/multi-client:${{ env.SHA }} ./client
+          docker build --no-cache -t sanyamgupta23/multi-server:latest -t sanyamgupta23/multi-server:${{ env.SHA }} ./server
+          docker build --no-cache -t sanyamgupta23/multi-worker:latest -t sanyamgupta23/multi-worker:${{ env.SHA }} ./worker
 
       - name: Push images to Dockerhub
         run: |
