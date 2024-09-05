@@ -28,11 +28,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Setup Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+      - name: Set Service Key
+        uses: "google-github-actions/auth@v0"
         with:
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: "${{ secrets.GCP_SA_KEY }}"
+
+      - name: Set Project
+        uses: google-github-actions/setup-gcloud@v0
+        with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Auth
+        run: |-
+          gcloud --quiet auth configure-docker
+
+      - name: Get Credentials
+        uses: google-github-actions/get-gke-credentials@v0
+        with:
+          cluster_name: multi-containers-k8s
+          location: us-central1-c
 
       - name: Login to Docker
         run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
@@ -52,10 +66,6 @@ jobs:
           docker push sanyamgupta23/multi-client:${{ env.SHA }} 
           docker push sanyamgupta23/multi-server:${{ env.SHA }}
           docker push sanyamgupta23/multi-worker:${{ env.SHA }}
-
-      - name: Authenticate with GKE
-        run: |
-          gcloud container clusters get-credentials multi-containers-k8s --zone us-central1-c --project ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Deploy to GKE
         run: |
